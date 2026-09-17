@@ -48,9 +48,10 @@ namespace KinopoiskUnofficialInfo.ApiClient
         }
 
         /// <summary>
-        /// 404 means "this film simply has no such data", 402 means the ApiToken ran out of quota.
-        /// Both are everyday outcomes rather than faults, so they must not abort a metadata refresh
-        /// or dump a stack trace into the server log - the caller just gets nothing back.
+        /// Everyday outcomes that are not faults: 404 means "this film simply has no such data",
+        /// 402 means the ApiToken ran out of quota, and a dropped connection means Kinopoisk is
+        /// having a moment. None of them should abort a metadata refresh or dump a stack trace into
+        /// the server log - the caller just gets nothing back and the next scan tries again.
         /// </summary>
         private Task<T> InvokeOptional<T>(Func<CancellationToken, Task<T>> method, CancellationToken? ct, Func<T> emptyResult, [CallerMemberName] string memberName = "")
             => Invoke(async (c) =>
@@ -72,7 +73,30 @@ namespace KinopoiskUnofficialInfo.ApiClient
                         memberName);
                     return emptyResult();
                 }
+                catch (HttpRequestException e)
+                {
+                    _logger.LogWarning("{Method} could not reach Kinopoisk: {Reason}", memberName, DescribeTransportFailure(e));
+                    return emptyResult();
+                }
+                // A timeout, as opposed to the refresh itself being cancelled - that must propagate.
+                catch (TaskCanceledException) when (!c.IsCancellationRequested)
+                {
+                    _logger.LogWarning("{Method} timed out waiting for Kinopoisk", memberName);
+                    return emptyResult();
+                }
             }, ct, memberName);
+
+        /// <summary>
+        /// The useful part of a transport failure is the innermost message ("Connection reset by
+        /// peer"); the outer ones are just wrappers, and the stack trace says nothing at all.
+        /// </summary>
+        private static string DescribeTransportFailure(Exception e)
+        {
+            while (e.InnerException != null)
+                e = e.InnerException;
+
+            return e.Message;
+        }
 
         public Task<Film> GetSingleFilm(int filmId, CancellationToken? cancellationToken = null)
             => InvokeOptional((ct) => _apiClient.FilmsAsync(filmId, ct), cancellationToken, () => (Film)null);
@@ -100,6 +124,9 @@ namespace KinopoiskUnofficialInfo.ApiClient
 
         public Task<SimilarFilmResponse> GetSimilars(int filmId, CancellationToken? cancellationToken = null)
             => InvokeOptional((ct) => _apiClient.SimilarsAsync(filmId, ct), cancellationToken, () => new SimilarFilmResponse());
+
+        public Task<RelatedFilmResponse> GetRelations(int filmId, CancellationToken? cancellationToken = null)
+            => InvokeOptional((ct) => _apiClient.RelationsAsync(filmId, ct), cancellationToken, () => new RelatedFilmResponse());
 
         public Task<PersonByNameResponse> SearchPersonByName(string name, int page = 1, CancellationToken? cancellationToken = null)
             => InvokeOptional((ct) => _apiClient.PersonsAsync(name, page, ct), cancellationToken, () => new PersonByNameResponse());

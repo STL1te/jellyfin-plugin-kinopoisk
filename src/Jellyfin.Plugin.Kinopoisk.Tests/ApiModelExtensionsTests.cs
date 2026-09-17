@@ -153,6 +153,41 @@ namespace Jellyfin.Plugin.Kinopoisk.Tests
         }
 
         [Fact]
+        public void ToSeasonShouldDateTheSeasonByItsFirstEpisode()
+        {
+            var season = new Season
+            {
+                Number = 2,
+                Episodes = new List<Episode>
+                {
+                    CreateEpisode(2, 3, "Третья", "1998-06-10"),
+                    CreateEpisode(2, 1, "Первая", "1998-05-06"),
+                    CreateEpisode(2, 2, "Вторая", null)
+                }
+            };
+
+            var result = season.ToSeason();
+
+            Assert.Equal(2, result.IndexNumber);
+            Assert.Equal(new DateTime(1998, 5, 6), result.PremiereDate.Value.Date);
+            Assert.Equal(1998, result.ProductionYear);
+        }
+
+        [Fact]
+        public void ToSeasonShouldSurviveASeasonWithNoDatedEpisodes()
+        {
+            var result = new Season
+            {
+                Number = 1,
+                Episodes = new List<Episode> { CreateEpisode(1, 1, "Первая", null) }
+            }.ToSeason();
+
+            Assert.Equal(1, result.IndexNumber);
+            Assert.Null(result.PremiereDate);
+            Assert.Null(result.ProductionYear);
+        }
+
+        [Fact]
         public void ToRemoteImageInfosShouldMapCoverToBackdropAndLogoToLogo()
         {
             var film = new Film
@@ -169,13 +204,13 @@ namespace Jellyfin.Plugin.Kinopoisk.Tests
             Assert.Equal(ImageType.Logo, result[2].Type);
         }
 
-        private static Episode CreateEpisode(int seasonNumber, int episodeNumber, string nameRu)
+        private static Episode CreateEpisode(int seasonNumber, int episodeNumber, string nameRu, string releaseDate = "1998-05-06")
             => new Episode
             {
                 SeasonNumber = seasonNumber,
                 EpisodeNumber = episodeNumber,
                 NameRu = nameRu,
-                ReleaseDate = "1998-05-06"
+                ReleaseDate = releaseDate
             };
 
         private static Distribution CreateDistribution(DistributionType type, string date, bool reRelease, params string[] companies)

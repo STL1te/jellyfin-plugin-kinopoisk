@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Globalization;
+using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Threading;
 using System.Threading.Tasks;
@@ -47,27 +48,40 @@ namespace Jellyfin.Plugin.Kinopoisk.SimilarItemsProviders
                 || !int.TryParse(kinopoiskIdStr, CultureInfo.InvariantCulture, out var kinopoiskId))
                 yield break;
 
-            SimilarFilmResponse similars;
-            try
+            // Sequels, prequels and spin-offs are a far stronger recommendation than "viewers also
+            // watched", so they go first and the plain similars list fills in behind them.
+            var seen = new HashSet<int>();
+            foreach (var filmId in await GetRelatedFilmIds(kinopoiskId, cancellationToken))
             {
-                similars = await _apiClient.GetSimilars(kinopoiskId, cancellationToken);
-            }
-            catch (Exception e)
-            {
-                _logger.LogWarning(e, "Failed to get similar films from Kinopoisk for {KinopoiskId}", kinopoiskId);
-                yield break;
-            }
+                if (!seen.Add(filmId))
+                    continue;
 
-            if (similars?.Items is null)
-                yield break;
-
-            foreach (var similar in similars.Items)
-            {
                 yield return new SimilarItemReference
                 {
                     ProviderName = Constants.ProviderId,
-                    ProviderId = similar.FilmId.ToString(CultureInfo.InvariantCulture)
+                    ProviderId = filmId.ToString(CultureInfo.InvariantCulture)
                 };
+            }
+        }
+
+        private async Task<IReadOnlyList<int>> GetRelatedFilmIds(int kinopoiskId, CancellationToken cancellationToken)
+        {
+            try
+            {
+                var relations = await _apiClient.GetRelations(kinopoiskId, cancellationToken);
+                var similars = await _apiClient.GetSimilars(kinopoiskId, cancellationToken);
+
+                return (relations?.Items ?? (ICollection<RelatedFilmResponse_items>)Array.Empty<RelatedFilmResponse_items>())
+                    .Select(i => i.KinopoiskId)
+                    .Concat((similars?.Items ?? (ICollection<SimilarFilmResponse_items>)Array.Empty<SimilarFilmResponse_items>())
+                        .Select(i => i.FilmId))
+                    .Where(id => id > 0)
+                    .ToArray();
+            }
+            catch (Exception e)
+            {
+                _logger.LogWarning(e, "Failed to get related films from Kinopoisk for {KinopoiskId}", kinopoiskId);
+                return Array.Empty<int>();
             }
         }
     }

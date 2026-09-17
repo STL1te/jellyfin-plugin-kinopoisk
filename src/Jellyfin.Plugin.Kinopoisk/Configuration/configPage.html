@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="ru">
 <head>
     <meta charset="utf-8">
     <title>КиноПоиск</title>
@@ -10,15 +10,51 @@
             <div class="content-primary">
                 <form id="KinopoiskConfigForm">
                     <div class="inputContainer">
-                        <label class="inputeLabel inputLabelUnfocused" for="ApiToken">ApiToken</label>
+                        <label class="inputeLabel inputLabelUnfocused" for="ApiToken">Ключ API</label>
                         <input id="ApiToken" name="ApiToken" type="text" is="emby-input" />
-                        <div class="fieldDescription">Personal api token, you can get your own on
-                            <a href="https://kinopoiskapiunofficial.tech">https://kinopoiskapiunofficial.tech</a>
+                        <div class="fieldDescription">
+                            По умолчанию используется общий ключ. Если плагин работает плохо или упирается в лимит запросов,
+                            зарегистрируйте свой на <a href="https://kinopoiskapiunofficial.tech" target="_blank" rel="noopener">kinopoiskapiunofficial.tech</a>
+                            и укажите его здесь. Изменение ключа применяется после перезапуска сервера.
                         </div>
+                    </div>
+                    <h3 class="checkboxListLabel">Недостающие эпизоды</h3>
+                    <div class="checkboxContainer checkboxContainer-withDescription">
+                        <label class="emby-checkbox-label">
+                            <input id="ImportUnairedEpisodes" name="ImportUnairedEpisodes" type="checkbox" is="emby-checkbox" />
+                            <span>Добавлять анонсированные эпизоды</span>
+                        </label>
+                        <div class="fieldDescription checkboxFieldDescription">
+                            Создаёт заготовки для эпизодов, дата выхода которых ещё не наступила. Они попадают в раздел «Скоро».
+                            Увеличивает время сканирования библиотеки.
+                        </div>
+                    </div>
+                    <div class="checkboxContainer checkboxContainer-withDescription">
+                        <label class="emby-checkbox-label">
+                            <input id="ImportMissingEpisodes" name="ImportMissingEpisodes" type="checkbox" is="emby-checkbox" />
+                            <span>Добавлять отсутствующие эпизоды</span>
+                        </label>
+                        <div class="fieldDescription checkboxFieldDescription">
+                            Создаёт заготовки для уже вышедших эпизодов, для которых нет файла — они отображаются как пропущенные.
+                            Увеличивает время сканирования библиотеки.
+                        </div>
+                    </div>
+                    <div class="checkboxContainer checkboxContainer-withDescription">
+                        <label class="emby-checkbox-label">
+                            <input id="ImportSpecials" name="ImportSpecials" type="checkbox" is="emby-checkbox" />
+                            <span>Учитывать спецвыпуски (сезон 0)</span>
+                        </label>
+                        <div class="fieldDescription checkboxFieldDescription">
+                            КиноПоиск складывает в нулевой сезон пилоты и разнородные дополнительные материалы,
+                            поэтому по умолчанию они не добавляются.
+                        </div>
+                    </div>
+                    <div class="fieldDescription">
+                        Если выключить оба варианта, ранее созданные заготовки будут удалены при следующем обновлении метаданных сериала.
                     </div>
                     <div>
                         <button is="emby-button" type="submit" class="raised button-submit block emby-button">
-                            <span>Save</span>
+                            <span>Сохранить</span>
                         </button>
                     </div>
                 </form>
@@ -33,6 +69,9 @@
                 Dashboard.showLoadingMsg();
                 ApiClient.getPluginConfiguration(KinopoiskPluginConfig.pluginUniqueId).then(function (config) {
                     $('#ApiToken').val(config.ApiToken).change();
+                    $('#ImportUnairedEpisodes').prop('checked', config.ImportUnairedEpisodes).change();
+                    $('#ImportMissingEpisodes').prop('checked', config.ImportMissingEpisodes).change();
+                    $('#ImportSpecials').prop('checked', config.ImportSpecials).change();
                     Dashboard.hideLoadingMsg();
                 });
             });
@@ -41,6 +80,9 @@
                 Dashboard.showLoadingMsg();
                 ApiClient.getPluginConfiguration(KinopoiskPluginConfig.pluginUniqueId).then(function (config) {
                     config.ApiToken = $('#ApiToken').val();
+                    config.ImportUnairedEpisodes = $('#ImportUnairedEpisodes').is(':checked');
+                    config.ImportMissingEpisodes = $('#ImportMissingEpisodes').is(':checked');
+                    config.ImportSpecials = $('#ImportSpecials').is(':checked');
                     ApiClient.updatePluginConfiguration(KinopoiskPluginConfig.pluginUniqueId, config).then(function (result) {
                         Dashboard.processPluginConfigurationUpdateResult(result);
                     });

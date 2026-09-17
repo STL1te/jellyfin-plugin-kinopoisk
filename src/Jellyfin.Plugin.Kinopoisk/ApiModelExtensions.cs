@@ -571,6 +571,30 @@ namespace Jellyfin.Plugin.Kinopoisk
             return res;
         }
 
+        public static MediaBrowser.Controller.Entities.TV.Season ToSeason(this KinopoiskUnofficialInfo.ApiClient.Season src)
+        {
+            if (src is null)
+                return null;
+
+            var res = new MediaBrowser.Controller.Entities.TV.Season()
+            {
+                IndexNumber = src.Number,
+                PremiereDate = src.GetPremiereDate()
+            };
+            res.ProductionYear = res.PremiereDate?.Year;
+
+            return res;
+        }
+
+        /// <summary>
+        /// A Kinopoisk season carries no date of its own, so the first episode to air stands in for it.
+        /// </summary>
+        public static DateTime? GetPremiereDate(this KinopoiskUnofficialInfo.ApiClient.Season src)
+            => src?.Episodes?
+                .Select(e => e.ReleaseDate.ParseDate())
+                .Where(d => d.HasValue)
+                .Min();
+
         public static KinopoiskUnofficialInfo.ApiClient.Episode FindEpisode(this SeasonResponse src, int seasonNumber, int episodeNumber)
             => src?.Items?
                 .FirstOrDefault(s => s.Number == seasonNumber)?.Episodes?

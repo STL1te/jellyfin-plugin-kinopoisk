@@ -15,6 +15,7 @@ namespace KinopoiskUnofficialInfo.ApiClient
         Task<SeasonResponse> GetSeasons(int filmId, CancellationToken? cancellationToken = null);
         Task<ImageResponse> GetImages(int filmId, KinopoiskImageType type, CancellationToken? cancellationToken = null);
         Task<SimilarFilmResponse> GetSimilars(int filmId, CancellationToken? cancellationToken = null);
+        Task<RelatedFilmResponse> GetRelations(int filmId, CancellationToken? cancellationToken = null);
         Task<PersonByNameResponse> SearchPersonByName(string name, int page = 1, CancellationToken? cancellationToken = null);
     }
 }

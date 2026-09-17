@@ -54,6 +54,9 @@ namespace KinopoiskUnofficialInfo.ApiClient
         public Task<SimilarFilmResponse> GetSimilars(int filmId, CancellationToken? cancellationToken = null)
             => TryGetValue(GenerateKey(nameof(GetSimilars), filmId), c => c.GetSimilars(filmId, cancellationToken));
 
+        public Task<RelatedFilmResponse> GetRelations(int filmId, CancellationToken? cancellationToken = null)
+            => TryGetValue(GenerateKey(nameof(GetRelations), filmId), c => c.GetRelations(filmId, cancellationToken));
+
         public Task<PersonByNameResponse> SearchPersonByName(string name, int page = 1, CancellationToken? cancellationToken = null)
             => TryGetValue(GenerateKey(nameof(SearchPersonByName), name, page), c => c.SearchPersonByName(name, page, cancellationToken));
 
