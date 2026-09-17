@@ -47,8 +47,11 @@ namespace KinopoiskUnofficialInfo.ApiClient
             }
         }
 
-        // Kinopoisk answers 404 for "this film simply has no such data", which is a normal outcome
-        // for most of the optional endpoints - don't let it abort the whole metadata refresh.
+        /// <summary>
+        /// 404 means "this film simply has no such data", 402 means the ApiToken ran out of quota.
+        /// Both are everyday outcomes rather than faults, so they must not abort a metadata refresh
+        /// or dump a stack trace into the server log - the caller just gets nothing back.
+        /// </summary>
         private Task<T> InvokeOptional<T>(Func<CancellationToken, Task<T>> method, CancellationToken? ct, Func<T> emptyResult, [CallerMemberName] string memberName = "")
             => Invoke(async (c) =>
             {
@@ -60,19 +63,28 @@ namespace KinopoiskUnofficialInfo.ApiClient
                 {
                     return emptyResult();
                 }
+                catch (ApiException e) when (e.StatusCode == 402)
+                {
+                    _logger.LogWarning(
+                        "Kinopoisk refused {Method}: the request quota for the current ApiToken is used up, "
+                        + "metadata will stay incomplete until the limit resets. Register your own token at "
+                        + "https://kinopoiskapiunofficial.tech and set it in the plugin settings.",
+                        memberName);
+                    return emptyResult();
+                }
             }, ct, memberName);
 
         public Task<Film> GetSingleFilm(int filmId, CancellationToken? cancellationToken = null)
-            => Invoke((ct) => _apiClient.FilmsAsync(filmId, ct), cancellationToken);
+            => InvokeOptional((ct) => _apiClient.FilmsAsync(filmId, ct), cancellationToken, () => (Film)null);
 
         public Task<ICollection<StaffResponse>> GetStaff(int filmId, CancellationToken? cancellationToken = null)
             => InvokeOptional((ct) => _apiClient.StaffAllAsync(filmId, ct), cancellationToken, () => Array.Empty<StaffResponse>());
 
         public Task<FilmSearchResponse> SearchByKeyword(string keyword, int page = 1, CancellationToken? cancellationToken = null)
-            => Invoke((ct) => _apiClient.SearchByKeywordAsync(keyword, page, ct), cancellationToken);
+            => InvokeOptional((ct) => _apiClient.SearchByKeywordAsync(keyword, page, ct), cancellationToken, () => new FilmSearchResponse());
 
         public Task<PersonResponse> GetPerson(int personId, CancellationToken? cancellationToken = null)
-            => Invoke((ct) => _apiClient.StaffAsync(personId, ct), cancellationToken);
+            => InvokeOptional((ct) => _apiClient.StaffAsync(personId, ct), cancellationToken, () => (PersonResponse)null);
 
         public Task<VideoResponse> GetTrailers(int filmId, CancellationToken? cancellationToken = null)
             => InvokeOptional((ct) => _apiClient.VideosAsync(filmId, ct), cancellationToken, () => new VideoResponse());

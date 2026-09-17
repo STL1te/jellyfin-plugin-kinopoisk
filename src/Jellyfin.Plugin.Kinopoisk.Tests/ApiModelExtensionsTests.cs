@@ -70,6 +70,39 @@ namespace Jellyfin.Plugin.Kinopoisk.Tests
         }
 
         [Fact]
+        public void ApplyDistributionsShouldFallBackToHomeVideoCompaniesForStudios()
+        {
+            var item = new Movie();
+
+            // What Kinopoisk actually returns for most films: the theatrical rows carry the dates,
+            // the DVD rows carry the company names.
+            item.ApplyDistributions(new DistributionResponse
+            {
+                Items = new List<Distribution>
+                {
+                    CreateDistribution(DistributionType.PREMIERE, "1998-06-05", false),
+                    CreateDistribution(DistributionType.ALL, "2009-12-15", false, "Юниверсал Пикчерс Рус"),
+                    CreateDistribution(DistributionType.ALL, "2012-07-02", false, "Новый Диск")
+                }
+            });
+
+            Assert.Equal(new[] { "Юниверсал Пикчерс Рус", "Новый Диск" }, item.Studios);
+        }
+
+        [Theory]
+        [InlineData("age18", null, "18+")]
+        [InlineData("age6", "pg", "6+")]
+        [InlineData("16", null, "16+")]
+        [InlineData("", "pg13", "PG13")]
+        [InlineData(null, null, null)]
+        public void GetOfficialRatingShouldNormalizeTheRussianAgeLimit(string ageLimits, string mpaa, string expected)
+        {
+            var film = new Film { RatingAgeLimits = ageLimits, RatingMpaa = mpaa };
+
+            Assert.Equal(expected, film.GetOfficialRating());
+        }
+
+        [Fact]
         public void ApplyDistributionsShouldLeaveItemAloneWhenThereAreNoDates()
         {
             var item = new Movie { PremiereDate = new DateTime(2018, 1, 1), ProductionYear = 2018 };

@@ -174,10 +174,7 @@ namespace Jellyfin.Plugin.Kinopoisk
             if (src.Genres != null)
                 foreach(var genre in src.Genres.Select(c => c.Genre1))
                     dst.AddGenre(genre);
-            if (!string.IsNullOrEmpty(src.RatingAgeLimits))
-                dst.OfficialRating = $"{src.RatingAgeLimits}+";
-            else
-                dst.OfficialRating = src.RatingMpaa;
+            dst.OfficialRating = src.GetOfficialRating();
 
             dst.CommunityRating = (float?)src.RatingKinopoisk;
             if (dst.CommunityRating < 0.1)
@@ -211,16 +208,44 @@ namespace Jellyfin.Plugin.Kinopoisk
                 dst.ProductionYear = premiere.Value.Year;
             }
 
-            var studios = src.Items
-                .Where(i => i.Type == DistributionType.PREMIERE || i.Type == DistributionType.WORLD_PREMIER)
+            // Theatrical rows name the actual distributor, but Kinopoisk usually leaves their
+            // companies empty and only fills them in on the DVD/digital rows - so fall back to those.
+            var studios = GetCompanies(src, i => i.Type == DistributionType.PREMIERE || i.Type == DistributionType.WORLD_PREMIER);
+            if (studios.Length < 1)
+                studios = GetCompanies(src, _ => true);
+
+            if (studios.Length > 0)
+                dst.Studios = studios;
+        }
+
+        private static string[] GetCompanies(DistributionResponse src, Func<Distribution, bool> filter)
+            => src.Items
+                .Where(filter)
                 .SelectMany(i => i.Companies ?? (ICollection<Company>)Array.Empty<Company>())
                 .Select(c => c.Name)
                 .Where(n => !string.IsNullOrWhiteSpace(n))
                 .Distinct()
                 .ToArray();
 
-            if (studios.Length > 0)
-                dst.Studios = studios;
+        /// <summary>
+        /// Kinopoisk reports the Russian age limit as "age18", which is meaningless to Jellyfin's
+        /// parental rating system - it wants "18+". Falls back to the MPAA rating.
+        /// </summary>
+        public static string GetOfficialRating(this Film src)
+        {
+            var ageLimit = src?.RatingAgeLimits;
+            if (!string.IsNullOrWhiteSpace(ageLimit))
+            {
+                if (ageLimit.StartsWith("age", StringComparison.OrdinalIgnoreCase))
+                    ageLimit = ageLimit.Substring(3);
+
+                if (!string.IsNullOrWhiteSpace(ageLimit))
+                    return $"{ageLimit}+";
+            }
+
+            return string.IsNullOrWhiteSpace(src?.RatingMpaa)
+                ? null
+                : src.RatingMpaa.ToUpperInvariant();
         }
 
         public static float? GetCriticRatingAsTenPointBased(this Film src)

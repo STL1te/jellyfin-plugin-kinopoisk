@@ -81,7 +81,9 @@ namespace Jellyfin.Plugin.Kinopoisk.MetadataProviders
                 && int.TryParse(kinopoiskIdStr, out var kinopoiskId))
             {
                 var singleResult = (await _apiClient.GetSingleFilm(kinopoiskId, cancellationToken)).ToRemoteSearchResult();
-                return Enumerable.Repeat(singleResult, 1);
+                return singleResult is null
+                    ? Enumerable.Empty<RemoteSearchResult>()
+                    : Enumerable.Repeat(singleResult, 1);
             }
             else
             {
