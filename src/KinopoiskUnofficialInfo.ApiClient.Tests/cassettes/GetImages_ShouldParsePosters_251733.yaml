@@ -1,0 +1,35 @@
+version: VCR.net 1.0.0
+httpInteractions:
+- request:
+    uri: https://kinopoiskapiunofficial.tech/api/v2.2/films/251733/images?type=POSTER&page=1
+    method: GET
+    headers:
+      Accept:
+      - application/json
+      X-API-KEY:
+      - 85d30ae5-d875-4c5f-900d-8e37bb20625e
+  response:
+    status:
+      code: 200
+      message: ''
+    headers:
+      Server:
+      - nginx/1.24.0
+      - (Ubuntu)
+      Date:
+      - Thu, 17 Sep 2026 12:37:17 GMT
+      Transfer-Encoding:
+      - chunked
+      Connection:
+      - keep-alive
+      Vary:
+      - Origin
+      - Access-Control-Request-Method
+      - Access-Control-Request-Headers
+      Content-Type:
+      - application/json
+    body:
+      encoding: ''
+      string: |-
+        {"total":59,"totalPages":3,"items":[{"imageUrl":"https://avatars.mds.yandex.net/get-kinopoisk-image/6201401/c95c77e2-c8bf-422e-a28b-50262d59f658/orig","previewUrl":"https://avatars.mds.yandex.net/get-kinopoisk-image/6201401/c95c77e2-c8bf-422e-a28b-50262d59f658/300x"},{"imageUrl":"https://avatars.mds.yandex.net/get-kinopoisk-image/4303601/3ab80d6e-0a30-4e89-b47b-36f19770b483/orig","previewUrl":"https://avatars.mds.yandex.net/get-kinopoisk-image/4303601/3ab80d6e-0a30-4e89-b47b-36f19770b483/300x"},{"imageUrl":"https://avatars.mds.yandex.net/get-kinopoisk-image/6201401/cbe3a015-d643-46e7-9d78-fbff65e29ef1/orig","previewUrl":"https://avatars.mds.yandex.net/get-kinopoisk-image/6201401/cbe3a015-d643-46e7-9d78-fbff65e29ef1/300x"},{"imageUrl":"https://avatars.mds.yandex.net/get-kinopoisk-image/6201401/692370b5-bf51-466c-8590-477d25f5fb6b/orig","previewUrl":"https://avatars.mds.yandex.net/get-kinopoisk-image/6201401/692370b5-bf51-466c-8590-477d25f5fb6b/300x"},{"imageUrl":"https://avatars.mds.yandex.net/get-kinopoisk-image/4774061/a615ba02-1152-4ae2-bac1-38ab4c588f2b/orig","previewUrl":"https://avatars.mds.yandex.net/get-kinopoisk-image/4774061/a615ba02-1152-4ae2-bac1-38ab4c588f2b/300x"},{"imageUrl":"https://avatars.mds.yandex.net/get-kinopoisk-image/1704946/6d16cf6d-7793-454c-926c-fc4ac8778026/orig","previewUrl":"https://avatars.mds.yandex.net/get-kinopoisk-image/1704946/6d16cf6d-7793-454c-926c-fc4ac8778026/300x"},{"imageUrl":"https://avatars.mds.yandex.net/get-kinopoisk-image/1900788/a8a6b095-ddbb-4174-a178-983f7da90dd9/orig","previewUrl":"https://avatars.mds.yandex.net/get-kinopoisk-image/1900788/a8a6b095-ddbb-4174-a178-983f7da90dd9/300x"},{"imageUrl":"https://avatars.mds.yandex.net/get-kinopoisk-image/1600647/300f72f8-21ff-41a0-a6d6-3dda9dc32bea/orig","previewUrl":"https://avatars.mds.yandex.net/get-kinopoisk-image/1600647/300f72f8-21ff-41a0-a6d6-3dda9dc32bea/300x"},{"imageUrl":"https://avatars.mds.yandex.net/get-kinopoisk-image/1600647/82d54f9b-0671-45aa-a96a-6fc140781363/orig","previewUrl":"https://avatars.mds.yandex.net/get-kinopoisk-image/1600647/82d54f9b-0671-45aa-a96a-6fc140781363/300x"},{"imageUrl":"https://avatars.mds.yandex.net/get-kinopoisk-image/1600647/2d7b4976-58ee-4194-9ce3-88b9976372f5/orig","previewUrl":"https://avatars.mds.yandex.net/get-kinopoisk-image/1600647/2d7b4976-58ee-4194-9ce3-88b9976372f5/300x"},{"imageUrl":"https://avatars.mds.yandex.net/get-kinopoisk-image/1600647/6ce045ed-59b1-4c35-87c3-32995e914084/orig","previewUrl":"https://avatars.mds.yandex.net/get-kinopoisk-image/1600647/6ce045ed-59b1-4c35-87c3-32995e914084/300x"},{"imageUrl":"https://avatars.mds.yandex.net/get-kinopoisk-image/1900788/39a03913-2258-4440-b8ad-398d4c556370/orig","previewUrl":"https://avatars.mds.yandex.net/get-kinopoisk-image/1900788/39a03913-2258-4440-b8ad-398d4c556370/300x"},{"imageUrl":"https://avatars.mds.yandex.net/get-kinopoisk-image/1600647/c057c9ab-6565-46de-815f-19b48ee49d8e/orig","previewUrl":"https://avatars.mds.yandex.net/get-kinopoisk-image/1600647/c057c9ab-6565-46de-815f-19b48ee49d8e/300x"},{"imageUrl":"https://avatars.mds.yandex.net/get-kinopoisk-image/1946459/b9d5e808-9abb-4a72-a00d-cc565370b659/orig","previewUrl":"https://avatars.mds.yandex.net/get-kinopoisk-image/1946459/b9d5e808-9abb-4a72-a00d-cc565370b659/300x"},{"imageUrl":"https://avatars.mds.yandex.net/get-kinopoisk-image/1629390/f6518f42-1b98-41fb-8921-183374f075dc/orig","previewUrl":"https://avatars.mds.yandex.net/get-kinopoisk-image/1629390/f6518f42-1b98-41fb-8921-183374f075dc/300x"},{"imageUrl":"https://avatars.mds.yandex.net/get-kinopoisk-image/1600647/f7b3f4aa-aa4b-49db-91f1-856b52171eda/orig","previewUrl":"https://avatars.mds.yandex.net/get-kinopoisk-image/1600647/f7b3f4aa-aa4b-49db-91f1-856b52171eda/300x"},{"imageUrl":"https://avatars.mds.yandex.net/get-kinopoisk-image/1946459/89a1db6b-5690-4669-91ba-ac246338370e/orig","previewUrl":"https://avatars.mds.yandex.net/get-kinopoisk-image/1946459/89a1db6b-5690-4669-91ba-ac246338370e/300x"},{"imageUrl":"https://avatars.mds.yandex.net/get-kinopoisk-image/1629390/ef12844d-4bfe-449b-8ebc-22efa6f3ee6c/orig","previewUrl":"https://avatars.mds.yandex.net/get-kinopoisk-image/1629390/ef12844d-4bfe-449b-8ebc-22efa6f3ee6c/300x"},{"imageUrl":"https://avatars.mds.yandex.net/get-kinopoisk-image/1599028/6a720f5b-0824-4997-8bf0-1b6acb2a4579/orig","previewUrl":"https://avatars.mds.yandex.net/get-kinopoisk-image/1599028/6a720f5b-0824-4997-8bf0-1b6acb2a4579/300x"},{"imageUrl":"https://avatars.mds.yandex.net/get-kinopoisk-image/1600647/39bb4811-71c6-4234-b94b-e29d94f67a01/orig","previewUrl":"https://avatars.mds.yandex.net/get-kinopoisk-image/1600647/39bb4811-71c6-4234-b94b-e29d94f67a01/300x"}]}
+    httpVersion: 1.1

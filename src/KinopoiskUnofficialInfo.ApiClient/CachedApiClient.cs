@@ -42,6 +42,21 @@ namespace KinopoiskUnofficialInfo.ApiClient
         public Task<FilmSearchResponse> SearchByKeyword(string keyword, int page = 1, CancellationToken? cancellationToken = null)
             => TryGetValue(GenerateKey(nameof(SearchByKeyword), keyword, page), c => c.SearchByKeyword(keyword, page, cancellationToken));
 
+        public Task<DistributionResponse> GetDistributions(int filmId, CancellationToken? cancellationToken = null)
+            => TryGetValue(GenerateKey(nameof(GetDistributions), filmId), c => c.GetDistributions(filmId, cancellationToken));
+
+        public Task<SeasonResponse> GetSeasons(int filmId, CancellationToken? cancellationToken = null)
+            => TryGetValue(GenerateKey(nameof(GetSeasons), filmId), c => c.GetSeasons(filmId, cancellationToken));
+
+        public Task<ImageResponse> GetImages(int filmId, KinopoiskImageType type, CancellationToken? cancellationToken = null)
+            => TryGetValue(GenerateKey(nameof(GetImages), filmId, type.ToString()), c => c.GetImages(filmId, type, cancellationToken));
+
+        public Task<SimilarFilmResponse> GetSimilars(int filmId, CancellationToken? cancellationToken = null)
+            => TryGetValue(GenerateKey(nameof(GetSimilars), filmId), c => c.GetSimilars(filmId, cancellationToken));
+
+        public Task<PersonByNameResponse> SearchPersonByName(string name, int page = 1, CancellationToken? cancellationToken = null)
+            => TryGetValue(GenerateKey(nameof(SearchPersonByName), name, page), c => c.SearchPersonByName(name, page, cancellationToken));
+
         private static string GenerateKey(params object[] objects)
         {
             var key = string.Empty;

@@ -35,42 +35,61 @@ namespace KinopoiskUnofficialInfo.ApiClient
         {
             try
             {
-                _logger.LogDebug($"{memberName} request starting...");
+                _logger.LogDebug("{Method} request starting...", memberName);
                 var res = await method.Invoke(ct ?? CancellationToken.None);
-                _logger.LogDebug($"{memberName} request complete successfully");
+                _logger.LogDebug("{Method} request complete successfully", memberName);
                 return res;
             }
             catch (ApiException e)
             {
-                _logger.LogError($"Received non-success result status code {e.StatusCode} from Kinopoisk API, response content is:\n{e.Response}");
+                _logger.LogError("Received non-success result status code {StatusCode} from Kinopoisk API, response content is:\n{Response}", e.StatusCode, e.Response);
                 throw;
             }
         }
+
+        // Kinopoisk answers 404 for "this film simply has no such data", which is a normal outcome
+        // for most of the optional endpoints - don't let it abort the whole metadata refresh.
+        private Task<T> InvokeOptional<T>(Func<CancellationToken, Task<T>> method, CancellationToken? ct, Func<T> emptyResult, [CallerMemberName] string memberName = "")
+            => Invoke(async (c) =>
+            {
+                try
+                {
+                    return await method.Invoke(c);
+                }
+                catch (ApiException e) when (e.StatusCode == 404)
+                {
+                    return emptyResult();
+                }
+            }, ct, memberName);
 
         public Task<Film> GetSingleFilm(int filmId, CancellationToken? cancellationToken = null)
             => Invoke((ct) => _apiClient.FilmsAsync(filmId, ct), cancellationToken);
 
         public Task<ICollection<StaffResponse>> GetStaff(int filmId, CancellationToken? cancellationToken = null)
-            => Invoke((ct) => _apiClient.StaffAllAsync(filmId, ct), cancellationToken);
+            => InvokeOptional((ct) => _apiClient.StaffAllAsync(filmId, ct), cancellationToken, () => Array.Empty<StaffResponse>());
 
         public Task<FilmSearchResponse> SearchByKeyword(string keyword, int page = 1, CancellationToken? cancellationToken = null)
-            => Invoke((ct) => _apiClient.SearchByKeywordAsync(keyword, null, ct), cancellationToken);
+            => Invoke((ct) => _apiClient.SearchByKeywordAsync(keyword, page, ct), cancellationToken);
 
         public Task<PersonResponse> GetPerson(int personId, CancellationToken? cancellationToken = null)
             => Invoke((ct) => _apiClient.StaffAsync(personId, ct), cancellationToken);
 
         public Task<VideoResponse> GetTrailers(int filmId, CancellationToken? cancellationToken = null)
-        {
-            return Invoke(async (ct) => {
-                try {
-                    return await _apiClient.VideosAsync(filmId, ct);
-                } catch (ApiException e)
-                {
-                    if (e.StatusCode == 404)
-                        return new VideoResponse();
-                    throw;
-                }
-            }, cancellationToken);
-        }
+            => InvokeOptional((ct) => _apiClient.VideosAsync(filmId, ct), cancellationToken, () => new VideoResponse());
+
+        public Task<DistributionResponse> GetDistributions(int filmId, CancellationToken? cancellationToken = null)
+            => InvokeOptional((ct) => _apiClient.DistributionsAsync(filmId, ct), cancellationToken, () => new DistributionResponse());
+
+        public Task<SeasonResponse> GetSeasons(int filmId, CancellationToken? cancellationToken = null)
+            => InvokeOptional((ct) => _apiClient.SeasonsAsync(filmId, ct), cancellationToken, () => new SeasonResponse());
+
+        public Task<ImageResponse> GetImages(int filmId, KinopoiskImageType type, CancellationToken? cancellationToken = null)
+            => InvokeOptional((ct) => _apiClient.ImagesAsync(filmId, type, 1, ct), cancellationToken, () => new ImageResponse());
+
+        public Task<SimilarFilmResponse> GetSimilars(int filmId, CancellationToken? cancellationToken = null)
+            => InvokeOptional((ct) => _apiClient.SimilarsAsync(filmId, ct), cancellationToken, () => new SimilarFilmResponse());
+
+        public Task<PersonByNameResponse> SearchPersonByName(string name, int page = 1, CancellationToken? cancellationToken = null)
+            => InvokeOptional((ct) => _apiClient.PersonsAsync(name, page, ct), cancellationToken, () => new PersonByNameResponse());
     }
 }

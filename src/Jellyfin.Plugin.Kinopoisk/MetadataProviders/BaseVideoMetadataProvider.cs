@@ -49,8 +49,10 @@ namespace Jellyfin.Plugin.Kinopoisk.MetadataProviders
             cancellationToken.ThrowIfCancellationRequested();
 
             result.Item = ConvertResponseToItem(film);
-            if (result.Item != null)
-                result.HasMetadata = true;
+            if (result.Item is null)
+                return result;
+
+            result.HasMetadata = true;
 
             var staff = await _apiClient.GetStaff(kinopoiskId, cancellationToken);
 
@@ -65,6 +67,10 @@ namespace Jellyfin.Plugin.Kinopoisk.MetadataProviders
             var remoteTrailers = trailers.ToMediaUrls();
             if (remoteTrailers is not null)
                 result.Item.RemoteTrailers = remoteTrailers;
+
+            cancellationToken.ThrowIfCancellationRequested();
+
+            result.Item.ApplyDistributions(await _apiClient.GetDistributions(kinopoiskId, cancellationToken));
 
             return result;
         }

@@ -11,5 +11,10 @@ namespace KinopoiskUnofficialInfo.ApiClient
         Task<ICollection<StaffResponse>> GetStaff(int filmId, CancellationToken? cancellationToken = null);
         Task<VideoResponse> GetTrailers(int filmId, CancellationToken? cancellationToken = null);
         Task<FilmSearchResponse> SearchByKeyword(string keyword, int page = 1, CancellationToken? cancellationToken = null);
+        Task<DistributionResponse> GetDistributions(int filmId, CancellationToken? cancellationToken = null);
+        Task<SeasonResponse> GetSeasons(int filmId, CancellationToken? cancellationToken = null);
+        Task<ImageResponse> GetImages(int filmId, KinopoiskImageType type, CancellationToken? cancellationToken = null);
+        Task<SimilarFilmResponse> GetSimilars(int filmId, CancellationToken? cancellationToken = null);
+        Task<PersonByNameResponse> SearchPersonByName(string name, int page = 1, CancellationToken? cancellationToken = null);
     }
 }

@@ -1,0 +1,35 @@
+version: VCR.net 1.0.0
+httpInteractions:
+- request:
+    uri: https://kinopoiskapiunofficial.tech/api/v2.2/films/1044982/distributions
+    method: GET
+    headers:
+      Accept:
+      - application/json
+      X-API-KEY:
+      - 85d30ae5-d875-4c5f-900d-8e37bb20625e
+  response:
+    status:
+      code: 200
+      message: ''
+    headers:
+      Server:
+      - nginx/1.24.0
+      - (Ubuntu)
+      Date:
+      - Thu, 17 Sep 2026 12:37:18 GMT
+      Connection:
+      - keep-alive
+      Vary:
+      - Origin
+      - Access-Control-Request-Method
+      - Access-Control-Request-Headers
+      Content-Type:
+      - application/json
+      Content-Length:
+      - 1694
+    body:
+      encoding: ''
+      string: |-
+        {"total":13,"items":[{"type":"ALL","subType":"DIGITAL","date":"2018-10-29","reRelease":false,"country":null,"companies":[{"name":"Централ Партнершип"}]},{"type":"COUNTRY_SPECIFIC","subType":null,"date":"2018-08-09","reRelease":false,"country":{"country":"Россия"},"companies":[]},{"type":"PREMIERE","subType":null,"date":"2018-07-25","reRelease":false,"country":{"country":"США"},"companies":[]},{"type":"PREMIERE","subType":null,"date":"2018-08-01","reRelease":false,"country":{"country":"Филиппины"},"companies":[]},{"type":"PREMIERE","subType":null,"date":"2018-08-01","reRelease":false,"country":{"country":"Индонезия"},"companies":[]},{"type":"PREMIERE","subType":null,"date":"2018-08-02","reRelease":false,"country":{"country":"Гонконг"},"companies":[]},{"type":"PREMIERE","subType":null,"date":"2018-08-02","reRelease":false,"country":{"country":"Израиль"},"companies":[]},{"type":"PREMIERE","subType":null,"date":"2018-08-02","reRelease":false,"country":{"country":"Сингапур"},"companies":[]},{"type":"PREMIERE","subType":null,"date":"2018-08-02","reRelease":false,"country":{"country":"Колумбия"},"companies":[]},{"type":"PREMIERE","subType":null,"date":"2018-08-02","reRelease":false,"country":{"country":"Ливан"},"companies":[]},{"type":"PREMIERE","subType":null,"date":"2018-08-02","reRelease":false,"country":{"country":"Египет"},"companies":[]},{"type":"PREMIERE","subType":null,"date":"2018-08-02","reRelease":false,"country":{"country":"Кувейт"},"companies":[]},{"type":"WORLD_PREMIER","subType":null,"date":"2018-07-25","reRelease":false,"country":{"country":"США"},"companies":[]}]}
+    httpVersion: 1.1

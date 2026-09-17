@@ -25,10 +25,13 @@ namespace Jellyfin.Plugin.Kinopoisk
                 Name = src.GetLocalName(),
                 ImageUrl = src.PosterUrl,
                 PremiereDate = src.GetPremiereDate(),
+                ProductionYear = src.GetProductionYear(),
                 Overview = src.Description,
                 SearchProviderName = Constants.ProviderName
             };
             res.SetProviderId(Constants.ProviderId, Convert.ToString(src.KinopoiskId));
+            if (!string.IsNullOrWhiteSpace(src.ImdbId))
+                res.SetProviderId(MetadataProvider.Imdb, src.ImdbId);
 
             return res;
         }
@@ -53,6 +56,7 @@ namespace Jellyfin.Plugin.Kinopoisk
                     Name = src.GetLocalName(),
                     ImageUrl = src.PosterUrl,
                     PremiereDate = src.GetPremiereDate(),
+                    ProductionYear = GetFirstYear(src.Year),
                     Overview = src.Description,
                     SearchProviderName = Constants.ProviderName
                 };
@@ -66,6 +70,51 @@ namespace Jellyfin.Plugin.Kinopoisk
             }
         }
 
+        public static IEnumerable<RemoteSearchResult> ToRemoteSearchResults(this PersonByNameResponse src)
+        {
+            if (src?.Items is null)
+                return Enumerable.Empty<RemoteSearchResult>();
+
+            return src.Items
+                .Select(s => s.ToRemoteSearchResult())
+                .Where(s => s != null);
+        }
+
+        public static RemoteSearchResult ToRemoteSearchResult(this PersonByNameResponse_items src)
+        {
+            var name = src.GetLocalName();
+            if (string.IsNullOrWhiteSpace(name))
+                return null;
+
+            var res = new RemoteSearchResult()
+            {
+                Name = name,
+                ImageUrl = src.PosterUrl,
+                SearchProviderName = Constants.ProviderName
+            };
+            res.SetProviderId(Constants.ProviderId, Convert.ToString(src.KinopoiskId));
+
+            return res;
+        }
+
+        public static RemoteSearchResult ToRemoteSearchResult(this PersonResponse src)
+        {
+            var name = src.GetLocalName();
+            if (string.IsNullOrWhiteSpace(name))
+                return null;
+
+            var res = new RemoteSearchResult()
+            {
+                Name = name,
+                ImageUrl = src.PosterUrl,
+                PremiereDate = src.Birthday.ParseDate(),
+                SearchProviderName = Constants.ProviderName
+            };
+            res.SetProviderId(Constants.ProviderId, Convert.ToString(src.PersonId));
+
+            return res;
+        }
+
         public static Series ToSeries(this Film src)
         {
             if (src is null)
@@ -75,10 +124,9 @@ namespace Jellyfin.Plugin.Kinopoisk
 
             FillCommonFilmInfo(src, res);
 
-            // res.EndDate = src.Data.GetEndDate();
-            // res.Status = src.Data.IsContinuing()
-            //     ? SeriesStatus.Continuing
-            //     : SeriesStatus.Ended;
+            if (src.EndYear > 1900)
+                res.EndDate = new DateTime(src.EndYear.Value, 12, 31);
+            res.Status = src.GetSeriesStatus();
 
             return res;
         }
@@ -95,17 +143,32 @@ namespace Jellyfin.Plugin.Kinopoisk
             return res;
         }
 
+        public static SeriesStatus? GetSeriesStatus(this Film src)
+            => src?.ProductionStatus switch
+            {
+                FilmProductionStatus.ANNOUNCED
+                    or FilmProductionStatus.FILMING
+                    or FilmProductionStatus.PRE_PRODUCTION
+                    or FilmProductionStatus.POST_PRODUCTION => SeriesStatus.Unreleased,
+                FilmProductionStatus.COMPLETED => SeriesStatus.Ended,
+                // No usable production status - fall back to what the year range tells us.
+                _ => (src?.Completed == true || src?.EndYear > 1900) ? SeriesStatus.Ended : SeriesStatus.Continuing,
+            };
+
         private static void FillCommonFilmInfo(Film src, BaseItem dst)
         {
             dst.SetProviderId(Constants.ProviderId, Convert.ToString(src.KinopoiskId));
             dst.Name = src.GetLocalName();
             dst.OriginalTitle = src.GetOriginalNameIfNotSame();
             dst.PremiereDate = src.GetPremiereDate();
-            if (1900 < src.Year)
-                dst.ProductionYear = src.Year;
+            dst.ProductionYear = src.GetProductionYear();
             if (!string.IsNullOrWhiteSpace(src.Slogan))
                 dst.Tagline = src.Slogan;
-            dst.Overview = src.Description;
+            dst.Overview = string.IsNullOrWhiteSpace(src.Description) ? src.ShortDescription : src.Description;
+            if (src.FilmLength > 0)
+                dst.RunTimeTicks = src.FilmLength.Value * TimeSpan.TicksPerMinute;
+            if (!string.IsNullOrWhiteSpace(src.WebUrl))
+                dst.HomePageUrl = src.WebUrl;
             if (src.Countries != null)
                 dst.ProductionLocations = src.Countries.Select(c => c.Country1).ToArray();
             if (src.Genres != null)
@@ -116,9 +179,9 @@ namespace Jellyfin.Plugin.Kinopoisk
             else
                 dst.OfficialRating = src.RatingMpaa;
 
-            dst.CommunityRating = (float)src.RatingKinopoisk;
+            dst.CommunityRating = (float?)src.RatingKinopoisk;
             if (dst.CommunityRating < 0.1)
-                dst.CommunityRating = (float)src.RatingImdb;
+                dst.CommunityRating = (float?)src.RatingImdb;
             if (dst.CommunityRating < 0.1)
                 dst.CommunityRating = null;
             dst.CriticRating = src.GetCriticRatingAsTenPointBased();
@@ -127,68 +190,92 @@ namespace Jellyfin.Plugin.Kinopoisk
                 dst.SetProviderId(MetadataProvider.Imdb, src.ImdbId);
         }
 
+        /// <summary>
+        /// A film object alone only ever yields "1 January of the production year" - Kinopoisk keeps
+        /// the actual release dates and the distributor companies in /distributions.
+        /// </summary>
+        public static void ApplyDistributions(this BaseItem dst, DistributionResponse src)
+        {
+            if (dst is null || src?.Items is null)
+                return;
+
+            var premiere = src.Items
+                .Where(i => i.ReRelease != true)
+                .Select(i => i.Date.ParseDate())
+                .Where(d => d.HasValue)
+                .Min();
+
+            if (premiere.HasValue)
+            {
+                dst.PremiereDate = premiere;
+                dst.ProductionYear = premiere.Value.Year;
+            }
+
+            var studios = src.Items
+                .Where(i => i.Type == DistributionType.PREMIERE || i.Type == DistributionType.WORLD_PREMIER)
+                .SelectMany(i => i.Companies ?? (ICollection<Company>)Array.Empty<Company>())
+                .Select(c => c.Name)
+                .Where(n => !string.IsNullOrWhiteSpace(n))
+                .Distinct()
+                .ToArray();
+
+            if (studios.Length > 0)
+                dst.Studios = studios;
+        }
+
         public static float? GetCriticRatingAsTenPointBased(this Film src)
         {
             if (src is null)
                 return null;
 
             if (src.RatingRfCritics > 0.0)
-                return (float)src.RatingRfCritics;
+                return (float?)src.RatingRfCritics;
 
             if (src.RatingFilmCritics > 0.0)
-                return (float)src.RatingFilmCritics;
+                return (float?)src.RatingFilmCritics;
 
             return null;
         }
 
         public static IEnumerable<RemoteImageInfo> ToRemoteImageInfos(this Film src)
         {
-            var res = Enumerable.Empty<RemoteImageInfo>();
             if (src is null)
-                return res;
+                yield break;
 
-            if (src?.PosterUrl != null)
-            {
-                var mainPoster = new RemoteImageInfo(){
-                    Type = ImageType.Primary,
-                    Url = src.PosterUrl,
-                    Language = Constants.ProviderMetadataLanguage,
-                    ProviderName = Constants.ProviderName
-                };
-                res = res.Concat(Enumerable.Repeat(mainPoster, 1));
-            }
+            if (!string.IsNullOrEmpty(src.PosterUrl))
+                yield return CreateRemoteImageInfo(src.PosterUrl, ImageType.Primary);
 
-            // if (src.Images != null)
-            // {
-            //     if (src.Images.Posters != null)
-            //         res = res.Concat(src.Images.Posters.ToRemoteImageInfos(ImageType.Primary));
-            //     if  (src.Images.Backdrops != null)
-            //         res = res.Concat(src.Images.Backdrops.ToRemoteImageInfos(ImageType.Backdrop));
-            // }
+            // Wide "cover" artwork - the closest thing Kinopoisk has to a Jellyfin backdrop.
+            if (!string.IsNullOrEmpty(src.CoverUrl))
+                yield return CreateRemoteImageInfo(src.CoverUrl, ImageType.Backdrop);
 
-            return res;
+            if (!string.IsNullOrEmpty(src.LogoUrl))
+                yield return CreateRemoteImageInfo(src.LogoUrl, ImageType.Logo);
         }
 
-        // public static IEnumerable<RemoteImageInfo> ToRemoteImageInfos(this IEnumerable<Images_posters> src, ImageType imageType)
-        // {
-        //     return src.Select(s => s.ToRemoteImageInfo(imageType))
-        //         .Where(s => s != null);
-        // }
+        public static IEnumerable<RemoteImageInfo> ToRemoteImageInfos(this ImageResponse src, ImageType imageType)
+        {
+            if (src?.Items is null)
+                return Enumerable.Empty<RemoteImageInfo>();
 
-        // public static RemoteImageInfo ToRemoteImageInfo(this Images_posters src, ImageType imageType)
-        // {
-        //     if (src is null)
-        //         return null;
+            return src.Items
+                .Where(i => !string.IsNullOrEmpty(i.ImageUrl))
+                .Select(i =>
+                {
+                    var res = CreateRemoteImageInfo(i.ImageUrl, imageType);
+                    res.ThumbnailUrl = i.PreviewUrl;
+                    return res;
+                });
+        }
 
-        //     return new RemoteImageInfo(){
-        //         Type = imageType,
-        //         Url = src.Url,
-        //         Language = src.Language,
-        //         Height = src.Height,
-        //         Width = src.Width,
-        //         ProviderName = Constants.ProviderName
-        //     };
-        // }
+        private static RemoteImageInfo CreateRemoteImageInfo(string url, ImageType imageType)
+            => new RemoteImageInfo()
+            {
+                Type = imageType,
+                Url = url,
+                Language = Constants.ProviderMetadataLanguage,
+                ProviderName = Constants.ProviderName
+            };
 
         public static IReadOnlyList<MediaUrl> ToMediaUrls(this VideoResponse src)
         {
@@ -201,7 +288,7 @@ namespace Jellyfin.Plugin.Kinopoisk
         }
 
         public static MediaUrl ToMediaUrl(this VideoResponse_items src) {
-            if (src is null || !VideoResponse_itemsSite.YOUTUBE.Equals(src.Site))
+            if (src is null || !VideoResponse_itemsSite.YOUTUBE.Equals(src.Site) || string.IsNullOrEmpty(src.Url))
                 return null;
 
             return new MediaUrl
@@ -241,13 +328,11 @@ namespace Jellyfin.Plugin.Kinopoisk
             {
                 Name = src.NameRu,
                 ImageUrl = src.PosterUrl,
-                Role = src.ProfessionText ?? null,
+                Role = string.IsNullOrWhiteSpace(src.Description) ? src.ProfessionText : src.Description,
                 Type = src.ProfessionKey.ToPersonType()
             };
             if (string.IsNullOrWhiteSpace(res.Name))
                 res.Name = src.NameEn ?? string.Empty;
-            if (src.AdditionalProperties.TryGetValue("description", out var description))
-                res.Role = description as string;
 
             res.SetProviderId(Constants.ProviderId, Convert.ToString(src.StaffId));
 
@@ -271,10 +356,13 @@ namespace Jellyfin.Plugin.Kinopoisk
         {
             return src switch
             {
-                StaffResponseProfessionKey.ACTOR => PersonKind.Actor,
+                StaffResponseProfessionKey.ACTOR
+                    or StaffResponseProfessionKey.HIMSELF
+                    or StaffResponseProfessionKey.HERSELF
+                    or StaffResponseProfessionKey.VOICE_MALE
+                    or StaffResponseProfessionKey.VOICE_FEMALE => PersonKind.Actor,
                 StaffResponseProfessionKey.DIRECTOR
-                    or StaffResponseProfessionKey.VOICE_DIRECTOR
-                    or StaffResponseProfessionKey.OPERATOR => PersonKind.Director,
+                    or StaffResponseProfessionKey.VOICE_DIRECTOR => PersonKind.Director,
                 StaffResponseProfessionKey.WRITER => PersonKind.Writer,
                 StaffResponseProfessionKey.COMPOSER => PersonKind.Composer,
                 StaffResponseProfessionKey.PRODUCER
@@ -286,36 +374,34 @@ namespace Jellyfin.Plugin.Kinopoisk
         }
 
         public static DateTime? ParseDate(this string src){
-            if (src == null)
+            if (string.IsNullOrWhiteSpace(src))
                 return null;
 
-            if (DateTime.TryParseExact(src, "o", CultureInfo.InvariantCulture, DateTimeStyles.AssumeUniversal, out var res))
+            // Kinopoisk mixes plain "2019-02-13" with full round-trip timestamps.
+            if (DateTime.TryParse(src, CultureInfo.InvariantCulture, DateTimeStyles.AssumeUniversal | DateTimeStyles.AdjustToUniversal, out var res))
                 return res;
+
+            return null;
+        }
+
+        public static int? GetProductionYear(this Film src)
+        {
+            if (src is null)
+                return null;
+
+            if (src.Year > 1900)
+                return src.Year;
+            if (src.StartYear > 1900)
+                return src.StartYear;
 
             return null;
         }
 
         public static DateTime? GetPremiereDate(this Film src)
         {
-            // var res = src.IsRussianSpokenOriginated()
-            //     ? src.PremiereRu.ParseDate()
-            //     : src.PremiereWorld.ParseDate();
-            // if (src.PremiereRu.ParseDate() < res)
-            //     res = src.PremiereRu.ParseDate();
-            // if (src.PremiereWorld.ParseDate() < res)
-            //     res = src.PremiereWorld.ParseDate();
-            // if (src.PremiereDigital.ParseDate() < res)
-            //     res = src.PremiereDigital.ParseDate();
-            // if (src.PremiereDvd.ParseDate() < res)
-            //     res = src.PremiereDvd.ParseDate();
-            // if (src.PremiereBluRay.ParseDate() < res)
-            //     res = src.PremiereBluRay.ParseDate();
-
-            // if (res.HasValue)
-            //     return res;
-
-            if (src.Year > 1900)
-                return new DateTime(src.Year, 1, 1);
+            var year = src.GetProductionYear();
+            if (year.HasValue)
+                return new DateTime(year.Value, 1, 1);
 
             return null;
         }
@@ -340,6 +426,14 @@ namespace Jellyfin.Plugin.Kinopoisk
         }
 
         public static string GetLocalName(this FilmSearchResponse_films src)
+        {
+            var res = src?.NameRu;
+            if (string.IsNullOrWhiteSpace(res))
+                res = src?.NameEn;
+            return res;
+        }
+
+        public static string GetLocalName(this PersonByNameResponse_items src)
         {
             var res = src?.NameRu;
             if (string.IsNullOrWhiteSpace(res))
@@ -434,6 +528,29 @@ namespace Jellyfin.Plugin.Kinopoisk
                 : null;
         }
 
+        public static MediaBrowser.Controller.Entities.TV.Episode ToEpisode(this KinopoiskUnofficialInfo.ApiClient.Episode src)
+        {
+            if (src is null)
+                return null;
+
+            var res = new MediaBrowser.Controller.Entities.TV.Episode()
+            {
+                Name = string.IsNullOrWhiteSpace(src.NameRu) ? src.NameEn : src.NameRu,
+                Overview = src.Synopsis,
+                ParentIndexNumber = src.SeasonNumber,
+                IndexNumber = src.EpisodeNumber,
+                PremiereDate = src.ReleaseDate.ParseDate()
+            };
+            res.ProductionYear = res.PremiereDate?.Year;
+
+            return res;
+        }
+
+        public static KinopoiskUnofficialInfo.ApiClient.Episode FindEpisode(this SeasonResponse src, int seasonNumber, int episodeNumber)
+            => src?.Items?
+                .FirstOrDefault(s => s.Number == seasonNumber)?.Episodes?
+                .FirstOrDefault(e => e.EpisodeNumber == episodeNumber);
+
         public static Person ToPerson(this PersonResponse src)
         {
             if (src is null)
@@ -443,13 +560,28 @@ namespace Jellyfin.Plugin.Kinopoisk
             {
                 Name = src.GetLocalName(),
                 PremiereDate = src.Birthday.ParseDate(),
-                EndDate = src.Death.ParseDate()
+                EndDate = src.Death.ParseDate(),
+                Overview = src.GetOverview()
             };
+            res.ProductionYear = res.PremiereDate?.Year;
 
             if (!string.IsNullOrWhiteSpace(src.Birthplace))
                 res.ProductionLocations = new[] { src.Birthplace };
 
+            res.SetProviderId(Constants.ProviderId, Convert.ToString(src.PersonId));
+
             return res;
+        }
+
+        /// <summary>
+        /// Kinopoisk has no biography field for persons - the "facts" list is the closest thing.
+        /// </summary>
+        public static string GetOverview(this PersonResponse src)
+        {
+            if (src?.Facts is null || src.Facts.Count < 1)
+                return null;
+
+            return string.Join("\n\n", src.Facts.Where(f => !string.IsNullOrWhiteSpace(f)));
         }
 
         public static string GetLocalName(this PersonResponse src)

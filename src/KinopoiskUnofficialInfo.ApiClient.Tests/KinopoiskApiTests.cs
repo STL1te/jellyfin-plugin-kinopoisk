@@ -132,5 +132,85 @@ namespace KinopoiskUnofficialInfo.ApiClient.Tests
                 Assert.Empty(res.Items);
             }
         }
+
+        [Theory]
+        [InlineData(77298, 5, 2, "Points of Departure")]
+        public async Task GetSeasons_ShouldParseEpisodes(int filmId, int seasonCount, int seasonNumber, string firstEpisodeName)
+        {
+            using (_vcr.UseCassette($"{GetMethodName()}_{filmId}", RecordMode.NewEpisodes))
+            {
+                var apiClient = new KinopoiskApiClient(ApiToken, _loggerFactory.CreateLogger<KinopoiskApiClient>(), _clientFactoryMock.Object);
+
+                var res = await apiClient.GetSeasons(filmId);
+
+                Assert.NotNull(res);
+                Assert.Equal(seasonCount, res.Items.Count);
+                var season = res.Items.Single(s => s.Number == seasonNumber);
+                Assert.Equal(firstEpisodeName, season.Episodes.Single(e => e.EpisodeNumber == 1).NameEn);
+            }
+        }
+
+        [Theory]
+        [InlineData(251733)]
+        public async Task GetImages_ShouldParsePosters(int filmId)
+        {
+            using (_vcr.UseCassette($"{GetMethodName()}_{filmId}", RecordMode.NewEpisodes))
+            {
+                var apiClient = new KinopoiskApiClient(ApiToken, _loggerFactory.CreateLogger<KinopoiskApiClient>(), _clientFactoryMock.Object);
+
+                var res = await apiClient.GetImages(filmId, KinopoiskImageType.POSTER);
+
+                Assert.NotNull(res);
+                Assert.NotEmpty(res.Items);
+                Assert.All(res.Items, i => Assert.StartsWith("http", i.ImageUrl));
+            }
+        }
+
+        [Theory]
+        [InlineData(251733)]
+        public async Task GetSimilars_ShouldParseItems(int filmId)
+        {
+            using (_vcr.UseCassette($"{GetMethodName()}_{filmId}", RecordMode.NewEpisodes))
+            {
+                var apiClient = new KinopoiskApiClient(ApiToken, _loggerFactory.CreateLogger<KinopoiskApiClient>(), _clientFactoryMock.Object);
+
+                var res = await apiClient.GetSimilars(filmId);
+
+                Assert.NotNull(res);
+                Assert.NotEmpty(res.Items);
+                Assert.All(res.Items, i => Assert.True(i.FilmId > 0));
+            }
+        }
+
+        [Theory]
+        [InlineData(1044982)]
+        public async Task GetDistributions_ShouldParseDatesAndCompanies(int filmId)
+        {
+            using (_vcr.UseCassette($"{GetMethodName()}_{filmId}", RecordMode.NewEpisodes))
+            {
+                var apiClient = new KinopoiskApiClient(ApiToken, _loggerFactory.CreateLogger<KinopoiskApiClient>(), _clientFactoryMock.Object);
+
+                var res = await apiClient.GetDistributions(filmId);
+
+                Assert.NotNull(res);
+                Assert.NotEmpty(res.Items);
+                Assert.Contains(res.Items, i => !string.IsNullOrEmpty(i.Date));
+            }
+        }
+
+        [Theory]
+        [InlineData("Ирина Старшенбаум", 3873197)]
+        public async Task SearchPersonByName_ShouldFindPerson(string name, int personId)
+        {
+            using (_vcr.UseCassette($"{GetMethodName()}_{personId}", RecordMode.NewEpisodes))
+            {
+                var apiClient = new KinopoiskApiClient(ApiToken, _loggerFactory.CreateLogger<KinopoiskApiClient>(), _clientFactoryMock.Object);
+
+                var res = await apiClient.SearchPersonByName(name);
+
+                Assert.NotNull(res);
+                Assert.Contains(res.Items, i => i.KinopoiskId == personId);
+            }
+        }
     }
 }

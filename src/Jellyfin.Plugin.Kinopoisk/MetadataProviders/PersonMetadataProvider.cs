@@ -7,6 +7,7 @@ using Jellyfin.Plugin.Kinopoisk.ProviderIdResolvers;
 using KinopoiskUnofficialInfo.ApiClient;
 using MediaBrowser.Controller.Entities;
 using MediaBrowser.Controller.Providers;
+using MediaBrowser.Model.Entities;
 using MediaBrowser.Model.Providers;
 using Microsoft.Extensions.Logging;
 
@@ -50,7 +51,22 @@ namespace Jellyfin.Plugin.Kinopoisk.MetadataProviders
             return result;
         }
 
-        public Task<IEnumerable<RemoteSearchResult>> GetSearchResults(PersonLookupInfo searchInfo, CancellationToken cancellationToken)
-            => Task.FromResult(Enumerable.Empty<RemoteSearchResult>()); // Not supported
+        public async Task<IEnumerable<RemoteSearchResult>> GetSearchResults(PersonLookupInfo searchInfo, CancellationToken cancellationToken)
+        {
+            if (searchInfo.TryGetProviderId(Constants.ProviderId, out var kinopoiskIdStr)
+                && int.TryParse(kinopoiskIdStr, out var kinopoiskId))
+            {
+                var person = await _apiClient.GetPerson(kinopoiskId, cancellationToken);
+                var singleResult = person.ToRemoteSearchResult();
+                return singleResult is null
+                    ? Enumerable.Empty<RemoteSearchResult>()
+                    : Enumerable.Repeat(singleResult, 1);
+            }
+
+            if (string.IsNullOrWhiteSpace(searchInfo.Name))
+                return Enumerable.Empty<RemoteSearchResult>();
+
+            return (await _apiClient.SearchPersonByName(searchInfo.Name, cancellationToken: cancellationToken)).ToRemoteSearchResults();
+        }
     }
 }
