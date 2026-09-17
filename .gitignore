@@ -1,4 +1,10 @@
-src/*/bin/*
-src/*/obj/*
-.devcontainer
+bin/
+obj/
+
+# Release archives are built by the workflow and uploaded to the GitHub release;
+# only dist/manifest.json belongs in the repository.
+dist/kinopoisk/
+
+.vs/
+.idea/
 .DS_Store

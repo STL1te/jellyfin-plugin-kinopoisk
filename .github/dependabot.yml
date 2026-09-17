@@ -17,3 +17,9 @@ updates:
       - dependency-name: "Microsoft.*"
         update-types:
           - version-update:semver-major
+
+  # Keeps the workflow actions off deprecated runtimes without waiting for GitHub to warn about it.
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "monthly"

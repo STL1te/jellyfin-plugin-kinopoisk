@@ -1,19 +1,20 @@
 {
-	"folders": [
+    "folders": [
         {
+            "name": "kinopoisk-plugin",
             "path": "."
         },
         {
-            "path": "../workspace-jellyfin"
+            // Optional: a checkout of github.com/jellyfin/jellyfin next to this repository, so that
+            // "go to definition" lands in the real provider interfaces instead of decompiled
+            // metadata. VS Code just greys this entry out when the folder is not there.
+            "name": "jellyfin",
+            "path": "../jellyfin"
         }
     ],
     "settings": {
-        "dotnet-test-explorer.enableTelemetry": false,
-        "dotnet-test-explorer.testProjectPath": "${workspaceFolder:workspace}/src/Jellyfin.Plugin.Kinopoisk.sln",
-        "omnisharp.defaultLaunchSolution": "Jellyfin.Plugin.Kinopoisk.sln",
-        "omnisharp.enableRoslynAnalyzers": true,
-        "omnisharp.organizeImportsOnFormat": true,
-        "csharp.semanticHighlighting.enabled": true,
-        "editor.formatOnType": true
+        "dotnet.defaultSolution": "src/Jellyfin.Plugin.Kinopoisk.sln",
+        "files.trimTrailingWhitespace": true,
+        "files.insertFinalNewline": true
     }
 }

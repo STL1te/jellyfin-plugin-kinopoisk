@@ -4,100 +4,54 @@
     "version": "2.0.0",
     "tasks": [
         {
-            "label": "regenerate-api-proxy",
-            "command": "dotnet",
-            "type": "process",
-            "args": [
-                "msbuild", "-target:GenerateApiClientSourceCode",
-                "${workspaceFolder:workspace}/src/KinopoiskUnofficialInfo.ApiClient/KinopoiskUnofficialInfo.ApiClient.csproj",
-                // Ask dotnet build to generate full paths for file names.
-                "-property:GenerateFullPaths=true",
-                // Do not generate summary otherwise it leads to duplicate errors in Problems panel
-                "-consoleloggerparameters:NoSummary"
-            ],
-            "group": "build",
-            "problemMatcher": "$msCompile"
-        },
-        {
             "label": "build",
             "command": "dotnet",
             "type": "process",
             "args": [
                 "build",
-                "${workspaceFolder:workspace}/src/Jellyfin.Plugin.Kinopoisk.sln",
+                "${workspaceFolder}/src/Jellyfin.Plugin.Kinopoisk.sln",
                 // Ask dotnet build to generate full paths for file names.
                 "-property:GenerateFullPaths=true",
                 // Do not generate summary otherwise it leads to duplicate errors in Problems panel
                 "-consoleloggerparameters:NoSummary"
             ],
-            "group": "build",
-            "problemMatcher": "$msCompile",
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            },
+            "problemMatcher": "$msCompile"
         },
         {
-            "label": "publish-to-run",
+            "label": "test",
             "command": "dotnet",
             "type": "process",
             "args": [
-                "publish",
-                "${workspaceFolder:workspace}/src/Jellyfin.Plugin.Kinopoisk/Jellyfin.Plugin.Kinopoisk.csproj",
-                "--output",
-                "/jellyfin-data/plugins/kinopoisk",
+                "test",
+                "${workspaceFolder}/src/Jellyfin.Plugin.Kinopoisk.sln",
                 "-property:GenerateFullPaths=true",
-                "-property:Version=10.9.0.0"
+                "-consoleloggerparameters:NoSummary"
             ],
-            "group": "build",
-            "presentation": {
-                "reveal": "silent"
-            },
-            "problemMatcher": "$msCompile",
-            "dependsOn": ["clear-plugin-state-before-debug"]
-        },
-        {
-            "label": "clear-plugin-state-before-debug",
-            "command": "rm",
-            "type": "process",
-            "args": [
-                "-f", "/jellyfin-data/plugins/kinopoisk/meta.json"
-            ],
-            "group": "build",
-            "presentation": {
-                "reveal": "silent"
+            "group": {
+                "kind": "test",
+                "isDefault": true
             },
             "problemMatcher": "$msCompile"
         },
         {
-            "label": "make-dist",
-            "command": "jprm",
+            // Rewrites GeneratedClient.generated.cs from the live Kinopoisk OpenAPI document.
+            // Needs the NSwag Net70 toolchain to start - see AGENTS.md if it refuses to run.
+            "label": "regenerate-api-proxy",
+            "command": "dotnet",
             "type": "process",
             "args": [
-                "-v", "DEBUG",
-                "plugin", "build", "${workspaceFolder:workspace}/src/Jellyfin.Plugin.Kinopoisk/"
+                "msbuild",
+                "-target:GenerateApiClientSourceCode",
+                "${workspaceFolder}/src/KinopoiskUnofficialInfo.ApiClient/KinopoiskUnofficialInfo.ApiClient.csproj",
+                "-property:GenerateFullPaths=true",
+                "-consoleloggerparameters:NoSummary"
             ],
-            "options": {
-                "cwd": "${workspaceFolder:workspace}/"
-            },
             "group": "none",
-            "presentation": {
-                "reveal": "always"
-            },
             "problemMatcher": "$msCompile"
-        },
-        {
-            "label": "make-dist-publish",
-            "command": "bash",
-            "type": "process",
-            "args": [
-                "${workspaceFolder:workspace}/publish.sh"
-            ],
-            "options": {
-                "cwd": "${workspaceFolder:workspace}/"
-            },
-            "group": "none",
-            "presentation": {
-                "reveal": "always"
-            },
-            "problemMatcher": "$msCompile",
-            "dependsOn": ["make-dist"]
         }
     ]
 }

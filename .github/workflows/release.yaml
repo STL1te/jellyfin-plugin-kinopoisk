@@ -98,6 +98,7 @@ jobs:
       run: |
         RELEASE_FILENAME=jellyfin-plugin-kinopoisk_${VERSION}.zip
         RELEASE_FILE=${DIST_ARCHIVES_PATH}/${RELEASE_FILENAME}
+        mkdir -p ${DIST_ARCHIVES_PATH}
         zip --junk-paths $RELEASE_FILE \
           ./src/Jellyfin.Plugin.Kinopoisk/bin/Release/net10.0/Jellyfin.Plugin.Kinopoisk.dll \
           ./src/KinopoiskUnofficialInfo.ApiClient/bin/Release/net10.0/KinopoiskUnofficialInfo.ApiClient.dll
