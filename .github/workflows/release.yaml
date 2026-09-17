@@ -2,6 +2,16 @@ name: Release
 
 on:
   workflow_dispatch:
+    inputs:
+      version:
+        description: "Версия (по умолчанию берётся из верхнего заголовка CHANGELOG.md)"
+        required: false
+        type: string
+      allow_overwrite:
+        description: "Перезаписать релиз, если такая версия уже выпущена (не для опубликованных версий)"
+        required: false
+        default: false
+        type: boolean
 
 env:
   DIST_ARCHIVES_PATH: dist/kinopoisk
@@ -53,6 +63,23 @@ jobs:
 
         echo "VERSION=$VERSION" >> $GITHUB_ENV
         echo "version=$VERSION" >> $GITHUB_OUTPUT
+
+    - name: Refuse to re-release an existing version
+      env:
+        GH_TOKEN: ${{ github.token }}
+      run: |
+        # A .NET build is not reproducible, so rebuilding the same source produces a different
+        # archive and a different checksum. Replacing the asset of a published version therefore
+        # invalidates the checksum for everyone who installed it before. Bump the version instead.
+        if gh release view "v${VERSION}" --repo "${{ github.repository }}" >/dev/null 2>&1; then
+          if [ "${{ inputs.allow_overwrite }}" = "true" ]; then
+            echo "::warning::Релиз v${VERSION} уже существует и будет перезаписан"
+          else
+            echo "::error::Релиз v${VERSION} уже выпущен. Добавьте новую версию в CHANGELOG.md," \
+                 "либо перезапустите с allow_overwrite, если предыдущий запуск не дошёл до публикации."
+            exit 1
+          fi
+        fi
 
     - name: Extract changelog
       id: changelog
@@ -143,7 +170,7 @@ jobs:
                "sourceUrl": $SOURCE_URL,
                "timestamp": $TIMESTAMP
              }
-           ] + .[0].versions' \
+           ] + (.[0].versions | map(select(.version != $VERSION)))' \
            "${MANIFEST_FILE}" > "${MANIFEST_FILE}.tmp"
 
         mv "${MANIFEST_FILE}.tmp" "${MANIFEST_FILE}"
